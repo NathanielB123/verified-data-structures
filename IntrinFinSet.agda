@@ -24,13 +24,13 @@ _>_ : ∀ {A : Set} → ⦃ Ord A ⦄ → A → A → Set
 
 record Ord A where
   field
-    _<_   : A → A → Set
-    compare : ∀ x y → CMP _<_ x y
-    <trans : ∀ {x y z} → x < y → y < z → x < z
-    <irref : ∀ {x y} → x < y → ¬ y < x
+    _<_      : A → A → Set
+    compare  : ∀ x y → CMP _<_ x y
+    <trans   : ∀ {x y z} → x < y → y < z → x < z
+    <irref   : ∀ {x y} → x < y → ¬ y < x
     <antisym : ∀ {x y} → x < y → ¬ x ≡ y
     -- Uniqueness-of-Less-Than-Proofs
-    uo<p   : ∀ {x y} (x<y₁ x<y₂ : x < y) → x<y₁ ≡ x<y₂
+    uo<p     : ∀ {x y} (x<y₁ x<y₂ : x < y) → x<y₁ ≡ x<y₂
 
 open Ord ⦃...⦄
 
@@ -43,15 +43,15 @@ compare-coh≡ {x = x} with compare x x
 ... | GT ⦃ x<x ⦄ = ⊥-elim $ <antisym x<x refl
 
 compare-coh< : ∀ {A : Set} ⦃ _ : Ord A ⦄ {x y : A} (x<y : x < y) 
-           → compare x y ≡ LT ⦃ x<y ⦄
+             → compare x y ≡ LT ⦃ x<y ⦄
 compare-coh< ⦃ OrdA ⦄ {x} {y} x<y with compare x y
 ... | LT ⦃ x<y' ⦄ = cong (λ x → LT ⦃ x ⦄) $ uo<p ⦃ OrdA ⦄ x<y' x<y
 ... | GT ⦃ x>y  ⦄ = ⊥-elim $ <irref x<y x>y
 ... | EQ         = ⊥-elim $ <antisym x<y refl
 
 compare-coh> : ∀ {A : Set} ⦃ _ : Ord A ⦄ {x y : A} 
-               (x>y : y < x) 
-           → compare x y ≡ GT ⦃ x>y ⦄
+                 (x>y : y < x) 
+             → compare x y ≡ GT ⦃ x>y ⦄
 compare-coh> ⦃ OrdA ⦄ {x} {y} x>y with compare x y
 ... | GT ⦃ x>y' ⦄ = cong (λ x → GT ⦃ x ⦄) $ uo<p ⦃ OrdA ⦄ x>y' x>y
 ... | LT ⦃ x<y  ⦄ = ⊥-elim $ <irref x>y x<y
@@ -67,8 +67,6 @@ data _+∞ (A : Set) : Set where
   -∞  : A +∞ 
 
 data _<A+∞_ {A : Set} ⦃ _ : Ord A ⦄ : A +∞ → A +∞ → Set where
-  -- I *think* this potentially could be an instance as well, as long as Agda
-  -- inlines `<` to the underlying datatype
   lift : ∀ {x y} → x < y → inj x <A+∞ inj y   
   instance 
     x<∞  : ∀ {x} → inj x <A+∞ ∞
@@ -109,9 +107,8 @@ data OFS {A : Set} ⦃ _ : Ord A ⦄ (l u : A +∞) : Set where
 
 pattern cons x xs p = _∷_ x ⦃ p ⦄ xs
 
-insert : ∀ {A : Set} {l u : A +∞} → ⦃ _ : Ord A ⦄
-       → (x : A) → ⦃ l <A+∞ inj x ⦄ → ⦃ inj x <A+∞ u ⦄ 
-       → OFS l u → OFS l u
+insert : ∀ {A : Set} {l u : A +∞} ⦃ _ : Ord A ⦄ (x : A) 
+       → ⦃ l <A+∞ inj x ⦄ → ⦃ inj x <A+∞ u ⦄ → OFS l u → OFS l u
 insert x [] = x ∷ []
 insert x (_∷_ y ⦃ y<l ⦄ ys) with compare (inj x) (inj y)
 ... | LT = x ∷ y ∷ ys
@@ -180,9 +177,6 @@ insert-xy≡insert-yx {A} x y (x ∷ zs) | EQ | LT ⦃ y<z ⦄
 ... | GT ⦃ x>y ⦄ 
   rewrite compare-coh< {A +∞} x>y rewrite compare-coh≡ {x = inj x}
   rewrite uo<p {A +∞} y<z x>y = refl
-    where
-      foo : y<z ≡ x>y
-      foo = uo<p {A +∞} y<z x>y
 ... | LT = ⊥-elim $ <irref {A +∞} y<z inst
 ... | EQ = ⊥-elim $ <antisym {A +∞} y<z refl
 insert-xy≡insert-yx {A} x y (y ∷ zs) | LT ⦃ x<z ⦄ | EQ 
@@ -195,5 +189,5 @@ insert-xy≡insert-yx {A} x y (y ∷ zs) | LT ⦃ x<z ⦄ | EQ
 insert-xy≡insert-yx {A} x x ⦃ l<x ⦄ ⦃ x<u ⦄ ⦃ l<y ⦄ ⦃ y<u ⦄ (z ∷ zs) | EQ | EQ
   rewrite uo<p {A +∞} l<x l<y rewrite uo<p {A +∞} x<u y<u = refl
 
-FinSet : (A : Set) → ⦃ _ : Ord A ⦄ → Set
+FinSet : (A : Set) ⦃ _ : Ord A ⦄ → Set
 FinSet A = OFS {A} -∞ ∞
