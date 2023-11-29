@@ -5,6 +5,7 @@ open import Function.Base using (_$_; _∘_)
 open import Relation.Binary.PropositionalEquality 
   using (_≡_; refl; cong; subst; sym)
 open import Relation.Nullary.Negation using (¬_; contradiction)
+open import Data.Sum using (_⊎_; inj₁; inj₂)
 
 open import Ord 
   using (Ord; _<_; compare; <trans; <irref; <antisym; uo<p; _>_; compare-coh≡
@@ -17,6 +18,7 @@ open import Utils using (inst)
 module IntrinFinMap where
 
 infixr 5 _↦_∷_
+infix 4 _↦_∈_
 
 -- Like Connor's `OList`, but we use a strict less-than relation `_<_` to ensure
 -- there are no duplicates, and carry around an associated value with each 
@@ -49,7 +51,45 @@ merge {K} m₁@(cons k₁ v₁ kvs₁ l<k₁) (k₂ ↦ v₂ ∷ kvs₂)
 ... | k₃ ↦ v₃ ∷ kvs₃ 
   = merge (cons k₁ v₁ kvs₁ l<k₁) (cons k₃ v₃ kvs₃ $ <trans {K +∞} l<k₁ inst)
 
+data _↦_∈_ {K V : Set} ⦃ _ : Ord K ⦄ {l u : K +∞} : K → V → OFM V l u 
+                                                  → Set where
+  here  : ∀ {k v kvs} ⦃ _ : l < inj k ⦄ 
+        → k ↦ v ∈ k  ↦ v  ∷ kvs
+  there : ∀ {k₁ v₁ k₂ v₂ kvs} ⦃ _ : l < inj k₁ ⦄ 
+        → k₂ ↦ v₂ ∈ kvs → k₂ ↦ v₂ ∈ k₁ ↦ v₁ ∷ kvs
+
+
 module _ {K V : Set} ⦃ _ : Ord K ⦄ where
+
+  record _∈_ {l u : K +∞} (k : K) (kvs : OFM V l u) : Set where
+    constructor ⟨_⟩
+    field
+      {v}  : V
+      ev : k ↦ v ∈ kvs
+
+  infix 4 _∈_
+  infix 4 _∉_
+  
+  _∉_ : ∀ {l u : K +∞} → K → OFM V l u → Set
+  k ∉ kvs = ¬ k ∈ kvs
+
+  k<l→k∉kvs : ∀ {l u : K +∞} (k : K) (kvs : OFM V l u) → ⦃ inj k < l ⦄ → k ∉ kvs
+  k<l→k∉kvs k  (cons k  v₂ kvs l<k)           ⟨ here ⟩ = <irref {K +∞} l<k inst
+  k<l→k∉kvs k₁ (cons k₂ v₂ kvs l<k₂) ⦃ k₁<l ⦄ ⟨ there k₁∈kvs ⟩ 
+    = k<l→k∉kvs k₁ kvs ⦃ <trans {K +∞} k₁<l l<k₂ ⦄ ⟨ k₁∈kvs ⟩
+
+  _∈?_ : ∀ {l u : K +∞} (k : K) (kvs : OFM V l u) → k ∈ kvs ⊎ k ∉ kvs 
+  k  ∈? [] = inj₂ $ λ ()
+  k₁ ∈? (k₂ ↦ v₂ ∷ kvs) with compare (inj k₁) (inj k₂)
+  ... | EQ = inj₁ ⟨ here ⟩
+  ... | LT ⦃ k₁<k₂ ⦄ = inj₂ $ λ where 
+    ⟨ there k₁∈kvs ⟩ → k<l→k∉kvs k₁ kvs ⟨ k₁∈kvs ⟩
+    ⟨ here ⟩         → <antisym {K +∞} k₁<k₂ refl
+  ... | GT ⦃ k₁>k₂ ⦄ with k₁ ∈? kvs
+  ... | inj₁ ⟨ k₁∈kvs ⟩ = inj₁ ⟨ there k₁∈kvs ⟩ 
+  ... | inj₂ k₁∉kvs = inj₂ $ λ where 
+    ⟨ there k₁∈kvs ⟩ → k₁∉kvs ⟨ k₁∈kvs ⟩
+    ⟨ here ⟩         → <antisym {K +∞} k₁>k₂ refl
 
   insert-com : ∀ {l u : K +∞} (k₁ k₂ : K) (v₁ v₂ : V)
                  ⦃ l<k₁ : l < inj k₁ ⦄ ⦃ k₁<u : inj k₁ < u ⦄
