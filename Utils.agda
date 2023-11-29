@@ -28,24 +28,21 @@ auto hole = do
   case hole of λ where
     (meta m _) → do
       let trySolution v = do
-            -- debugPrint "auto" 10 (strErr "auto trying " ∷ termErr v ∷ [])
-            unify hole v
-      -- let debugSolutions vs = do
-      --       `vs ← quoteTC vs
-            -- debugPrint "auto" 10 (strErr "auto trying list " ∷ termErr `vs ∷ [])
+        unify hole v
       ctx ← getContext
       let vars = map (λ n → var n []) (downFrom (length ctx))
-      -- debugSolutions vars
       catchTC (oneOf (map trySolution vars)) do
-        -- debugPrint "auto" 10 (strErr "auto getting instances" ∷ [])
         cs ← getInstances m
-        -- debugSolutions cs
         catchTC (oneOf (map trySolution cs)) do
           goal ← inferType hole
-          typeError (strErr "auto could not find a value of type " ∷ termErr goal ∷ [])
-    _ → typeError (strErr "auto called on already solved hole " ∷ termErr hole ∷ [])
+          typeError 
+            (strErr "auto could not find a value of type " ∷ termErr goal ∷ [])
+    _ → typeError 
+      (strErr "auto called on already solved hole " ∷ termErr hole ∷ [])
 
 -- Fills an implicit argument from the context
+-- Doesn't actually work that great in practice unfortunately because Agda is
+-- a bit flaky when it comes to type inference with implicit function types
 ⦅_⦆ : ∀ {A B : Set} → (⦃ A ⦄ → B) → {@(tactic auto) _ : A} → B
 ⦅_⦆ x {y} = x ⦃ y ⦄
 
